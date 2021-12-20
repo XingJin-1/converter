@@ -1,0 +1,8 @@
+.vs/
+Debug/
+Release/
+*.VC.*
+*.sln
+*vcxproj*
+csv2staging/Debug/
+csv2staging/Release/

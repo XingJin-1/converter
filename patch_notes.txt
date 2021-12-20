@@ -1,0 +1,3 @@
+v4.0.0:
+	- Converting and uploading only one single folder within 30_RawData is now possible
+	- fix issues with upper and lower limits in the tembo reports
