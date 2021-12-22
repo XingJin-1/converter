@@ -111,6 +111,6 @@ public:
 	bool csvs_to_json(vector<wstring>, map<wstring, map<wstring, wstring>>, map<wstring, wstring>, wstring, vector<wstring>, vector<wstring>);
 
 
-	vector<wstring>get_corresponding_files(vector<wstring>, vector<wstring>);
+	vector<wstring>get_corresponding_files(vector<wstring>, vector<wstring>, vector<wstring>);
 };
 

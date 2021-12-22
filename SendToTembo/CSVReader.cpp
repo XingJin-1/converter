@@ -343,6 +343,8 @@ bool CSVReader::csvs_to_json(vector<wstring> csv_files, map<wstring, map<wstring
 					wstring unit{};
 					wstring scaled_value{};
 					vector<wstring> comments{};
+					vector<wstring> pic_path{};
+					vector<wstring> wfm_path{};
 					// iterate through each column in current row to build meta_data
 					for (int current_col = 0; current_col < test_data.size(); current_col++) {
 						// check if current data value doesn't correspond to any column header
@@ -379,12 +381,27 @@ bool CSVReader::csvs_to_json(vector<wstring> csv_files, map<wstring, map<wstring
 							// add each condition to the png_file_match_conditions with values. add [ as end of condition (e.g. vio=3[V])
 							file_match_conditions.push_back(variables[current_col] + L"=" + test_data[current_col] + L"[");
 						}
-						// check if current column corresponds to comment, except if variable is picture path
+						// check if current column corresponds to comment, and variable is picture path
 						if (this->convert_to_lower(column_types[current_col]).find(L"comment") != wstring::npos && variables[current_col] != L"PicturePath" &&
 							!test_data[current_col].empty()) {
 							comments.push_back(test_data[current_col]);
 						}
 					}
+					// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+					// iterate through each column in current row to build picture path
+					for (int current_col = 0; current_col < test_data.size(); current_col++) {
+						if (this->convert_to_lower(column_types[current_col]).find(L"comment") != wstring::npos && variables[current_col] == L"PicturePath" &&
+							!test_data[current_col].empty()) {
+							pic_path.push_back(test_data[current_col]);
+						}
+					}
+					for (int current_col = 0; current_col < test_data.size(); current_col++) {
+						if (this->convert_to_lower(column_types[current_col]).find(L"comment") != wstring::npos && variables[current_col] == L"WaveformPath" &&
+							!test_data[current_col].empty()) {
+							wfm_path.push_back(test_data[current_col]);
+						}
+					}
+					// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 					// get cond_link as path to the folder containing current CSV file
 					meta_data[L"cond_link_screenshots"] = L"file:///" + this->strrep(csv_files[i].substr(0, csv_files[i].find_last_of(L"\\")), '\\', '/');
 					meta_data[L"cond_link_raw_data"] = L"file:///" + this->strrep(csv_files[i].substr(0, csv_files[i].find_last_of(L"\\")), '\\', '/');
@@ -465,26 +482,11 @@ bool CSVReader::csvs_to_json(vector<wstring> csv_files, map<wstring, map<wstring
 							scaled_value = this->scale_value(scale, test_data[current_col]);
 							payload[key_name] = scaled_value;
 							
-							// if there are matching png files save them to payload
+							// if there are matching png files save them to payload + pic_path
+							// upadte 22.12.2021 matching is also based on pic_path
 							file_match_conditions.push_back(L"Report-Picture");
-							vector<wstring> matching_png_files = get_corresponding_files(file_match_conditions, png_files);
+							vector<wstring> matching_png_files = get_corresponding_files(file_match_conditions, png_files, pic_path);
 							file_match_conditions.pop_back();
-							/* DEBUG
-							if (scaled_value == L"0.277049") {
-								vector<wstring> matching_png_files = get_corresponding_files(file_match_conditions, png_files);
-								cout << "Conditions AFTER" << endl;
-								for (auto condition : file_match_conditions) {
-									wcout << condition << endl;
-								}
-								cout << "Matching files" << endl;
-								for (auto matching_png_file : matching_png_files) {
-									wcout << matching_png_file << endl;
-								}
-							}
-							else {
-								continue;
-							}
-							*/
 							
 							// save related png files to current payload
 							for (auto i = 0; i < matching_png_files.size(); i++) {
@@ -496,7 +498,7 @@ bool CSVReader::csvs_to_json(vector<wstring> csv_files, map<wstring, map<wstring
 							}
 							// get corresponding .mat files
 							file_match_conditions.push_back(L"Report-waveform");
-							vector<wstring> matching_mat_files = get_corresponding_files(file_match_conditions, mat_files);
+							vector<wstring> matching_mat_files = get_corresponding_files(file_match_conditions, mat_files, wfm_path);
 							file_match_conditions.pop_back();
 							// save related .mat files
 							for (auto i = 0; i < matching_mat_files.size(); i++) {
@@ -745,7 +747,7 @@ bool CSVReader::csvs_to_json(vector<wstring> csv_files, map<wstring, map<wstring
 	return res;
 }
 
-vector<wstring>CSVReader::get_corresponding_files(vector<wstring> file_match_conditions, vector<wstring> files) {
+vector<wstring>CSVReader::get_corresponding_files(vector<wstring> file_match_conditions, vector<wstring> files, vector<wstring> pic_path) {
 	vector<wstring> matching_files{};
 	for (auto file : files) {
 		// check how many conditions are given in the current filename based on the number of '=' chars
@@ -753,8 +755,9 @@ vector<wstring>CSVReader::get_corresponding_files(vector<wstring> file_match_con
 		int num_of_conds_in_filename = this->count_char_occurence(file, '=');
 		// add one more condition for matching parent folder name
 		num_of_conds_in_filename++;
+		// deprecated for csv
 		// add one more condition for matching Report-Picture or Report-waveform names
-		num_of_conds_in_filename++;
+		//num_of_conds_in_filename++;
 		int num_of_conds_matched = 0;
 		for (auto file_match_cond : file_match_conditions) {
 			// count number of conditions that match with conditions in the filename
@@ -766,7 +769,9 @@ vector<wstring>CSVReader::get_corresponding_files(vector<wstring> file_match_con
 		// conditions in the filename
 		if (num_of_conds_matched == num_of_conds_in_filename) {
 			wstring base_filename = wstring(file).substr(wstring(file).find_last_of(L"/\\") + 1);
-			matching_files.push_back(base_filename);
+			if (find(pic_path.begin(), pic_path.end(), base_filename) != pic_path.end()) {
+				matching_files.push_back(base_filename);
+			}
 		}
 	}
 	return matching_files;

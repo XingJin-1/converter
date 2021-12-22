@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 	auto t3 = clock::now();
 
 	std::setlocale(LC_ALL, "en_US.utf8");
-	std::locale::global(std::locale("en_US.utf8"));
+	//std::locale::global(std::locale("en_US.utf8"));
 
 	vector<wstring> csv_files;
 	vector<wstring> png_files;
